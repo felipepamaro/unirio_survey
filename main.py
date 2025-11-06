@@ -107,3 +107,14 @@ async def telegram_webhook(update: TelegramUpdate, db: Session = Depends(get_db)
 
     # Retornar 200 OK para o Telegram
     return Response(status_code=200)
+
+
+@app.get("/export")
+def export_responses(db: Session = Depends(get_db)):
+    """
+    Exporta todas as respostas da pesquisa armazenadas no banco de dados.
+    """
+    survey_manager = SurveyManager(db)
+    all_responses = survey_manager.export()
+    
+    return all_responses

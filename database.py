@@ -35,7 +35,7 @@ class SurveyManager:
     def __init__(self, db_session):
         self.db = db_session
 
-    def get_active_survey(self, chat_id: int): # MUDANÇA: Nome e Lógica
+    def get_active_survey(self, chat_id: int):
         """
         Encontra a pesquisa mais recente deste usuário que não está 
         marcada como 'completed'.
@@ -73,3 +73,9 @@ class SurveyManager:
         self.db.commit()
         self.db.refresh(user_response)
         return user_response
+    
+    def export(self):
+        """
+        Exporta todas as respostas da tabela SurveyResponse.
+        """
+        return self.db.query(SurveyResponse).all()
