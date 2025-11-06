@@ -13,7 +13,10 @@ run:
 	export $(cat env.dev | xargs) 
 	uvicorn main:app --reload
 
+ngrok:
+	ngrok http 8000
 
+	
 test:
 	@echo "# 1. Crie um ambiente virtual "
 	@echo "# 2. Instale as dependências"
