@@ -3,3 +3,5 @@ uvicorn[standard]
 sqlalchemy
 python-dotenv
 httpx
+psycopg2-binary
+psycopg2
