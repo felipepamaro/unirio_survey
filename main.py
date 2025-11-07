@@ -1,3 +1,6 @@
+import asyncio
+import httpx
+
 from fastapi import FastAPI, Request, Depends, Response
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
@@ -7,18 +10,44 @@ from typing import Optional
 from database import SessionLocal, SurveyManager, create_db_and_tables
 from telegram_sender import TelegramSender
 
+from random import randint
+
 # Carrega as variáveis de ambiente do arquivo .env
 load_dotenv()
 
 # Cria o app FastAPI
 app = FastAPI(title="API de Pesquisa UNIRIO via Telegram")
 
+
+async def keep_alive_request():
+    """
+    Uma gambiarra elegante pra mantar o Render ativo.
+    Como o render desliga o servidor por inatividade, resolvi incluir um request entre 45s e 60s para manter o server ativo. 
+    """
+
+    async with httpx.AsyncClient() as client:
+        while True:
+            try:
+                # 1. Faz a chamada (usando uma API de teste pública)
+                response = await client.get("https://unirio-survey.onrender.com/")
+                response.raise_for_status() # Lança erro se o status for 4xx ou 5xx
+                
+                # 2. Imprime no log (console)
+                sleep_time = randint(45, 60)
+                print(f"Keep aLive -  Chamada bem-sucedida. Status: {response.status_code}")
+                print(f"Aguardando {sleep_time} segundos" )
+            
+            except httpx.RequestError as e:
+                print(f"Keep aLive - Erro ao chamar API: {e}")
+            await asyncio.sleep(sleep_time)
+
+
 # Cria as tabelas do banco de dados na inicialização
 @app.on_event("startup")
 def on_startup():
     create_db_and_tables()
+    asyncio.create_task(keep_alive_request())
 
-# --- Modelos Pydantic (Sem mudanças) ---
 class Chat(BaseModel):
     id: int
 class Message(BaseModel):
@@ -27,7 +56,7 @@ class Message(BaseModel):
 class TelegramUpdate(BaseModel):
     message: Message
 
-# --- Dependências (Sem mudanças) ---
+# --- Dependências ---
 def get_db():
     db = SessionLocal()
     try:
@@ -35,7 +64,7 @@ def get_db():
     finally:
         db.close()
 
-# --- Instâncias e Perguntas (Sem mudanças) ---
+# --- Instâncias e Perguntas ---
 telegram_client = TelegramSender()
 
 Q1 = "Qual o seu vínculo principal com a UNIRIO?"
@@ -51,7 +80,7 @@ que visa identificar e categorizar as principais oportunidades
 de melhoria em nossa universidade, sob a perspectiva de quem 
 vivencia a UNIRIO todos os dias.""" 
 
-# --- Rota Raiz ---
+# --- Rota Raiz, usada para um Health Check---
 @app.get("/")
 def read_root():
     return {"status": "live"}
@@ -65,7 +94,6 @@ async def telegram_webhook(update: TelegramUpdate, db: Session = Depends(get_db)
     """
     if not update.message or not update.message.text:
         return Response(status_code=200) # Ignora mensagens sem texto
-
     user_chat_id = update.message.chat.id
     user_message = update.message.text
     
